@@ -7,7 +7,18 @@ import (
 	"time"
 	"strings"
 	"fmt"
+	"regexp"
 )
+
+func ParseTokenAndOptions(auth string) string {
+
+	_, err := regexp.MatchString("^Token ", auth)
+	if err != nil {
+		return auth
+	}
+
+	return strings.SplitN(strings.Replace( strings.Replace(auth, "Token ", "", 1), "token=", "", 1), " ", 2)[0]
+}
 
 func main() {
 
@@ -37,21 +48,41 @@ func main() {
 
 		fmt.Printf("Requesting orders for shop %s...\n", shopUUID)
 
-		// grab other request data to send to Redis
-		authString := c.Request.Header.Get( "authorization" )
-		auth       := strings.SplitN(strings.Replace(authString, "Token ", "", 1), ",", 2)
-		params     := []interface{}{auth, "params_hash_for_worker"}
+		// grab auth headers
+		var authArray [2]string
+		authString   := c.Request.Header.Get("authorization")
+		authArray[0]  = strings.SplitN(authString," ", 2)[0] // e.g. "Bearer"
+		authArray[1]  = ParseTokenAndOptions(authString)           // the auth token
+
+		// build request data arguments
+		var requestData map[string]string
+
+		requestData["requested_at"]    = time.Now().String()
+		requestData["request_method"]  = c.Request.Method
+		requestData["request_path"]    = c.Request.Header.Get("REQUEST_PATH")
+		requestData["request_referer"] = c.Request.Referer()
+		requestData["user_agent"]      = c.Request.UserAgent()
+		requestData["remote_ip"]       = c.Request.RemoteAddr
+		requestData["auth_header"]     = c.Request.Header.Get("HTTP_AUTHORIZATION")
+		requestData["request_id"]      = shopUUID
+		requestData["release_sha"]     = ""
+		requestData["shop_domain"]     = c.Request.Header.Get("x-jilt-shop-domain")
+
+		// what the data should look like in there:
+		//{"updated_at"=>"2018-04-27T20:28:12.627999Z", "cart_token"=>"f3b8bbbd-beb1-4a1f-ba68-c98159e88f58", "checkout_url"=>"https://jilt-api-docs.example.com", "line_items"=>[{"key"=>"123"}], "shop_id"=>"1", "order"=>{"checkout_url"=>"https://jilt-api-docs.example.com", "cart_token"=>"f3b8bbbd-beb1-4a1f-ba68-c98159e88f58"}, "domain_header"=>nil}, "create", nil
+		params := []interface{}{
+			authArray,
+			requestData,
+		}
 
 		fmt.Println("Sending new task to Redis...")
 
 		// prepare and enqueue job to Redis
 		job := NewJob("ApiOrderEventWorker", "default", params, 1)
 
-		jobID := job.Enqueue(pool)
+		fmt.Printf("Got Job ID %s\n", job.JID)
 
-		// looks like GoKiq doesn't return a job ID so this might be null after all...
-		fmt.Printf("Got Job ID %s\n", jobID)
-
+		job.Enqueue(pool)
 		job.EnqueueAt(time.Now(), pool)
 
 		fmt.Println("Done!")

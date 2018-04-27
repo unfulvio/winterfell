@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/garyburd/redigo/redis"
+	"fmt"
 )
 
 // Job holds all the information about the job to be enqueued.
@@ -34,10 +35,18 @@ func (job *Job) Enqueue(pool *redis.Pool) error {
 
 	b, err := json.Marshal(job)
 	if err != nil {
+		fmt.Println("An error occurred while parsing job data")
 		return err
 	}
-	_, err = conn.Do("SADD", "queues", job.Queue)
+	_, err = conn.Do("SADD", "jilt_development:queues", job.Queue)
 	if err != nil {
+		fmt.Printf("Could not insert into queues: %s\n", err)
+		return err
+	}
+	statusKey := "jilt_development:status:" + job.JID
+	_, err = conn.Do("SET", statusKey, "")
+	if err != nil {
+		fmt.Printf("Could not set status for Job ID: %s\n", err)
 		return err
 	}
 	_, err = conn.Do("LPUSH", "jilt_development:queue:"+job.Queue, b)
@@ -51,9 +60,10 @@ func (job *Job) EnqueueAt(time time.Time, pool *redis.Pool) error {
 
 	b, err := json.Marshal(job)
 	if err != nil {
+		fmt.Println("An error occurred while parsing job data")
 		return err
 	}
-	_, err = conn.Do("ZADD", "schedule", time.Unix(), b)
+	_, err = conn.Do("ZADD", "jilt_development:schedule", time.Unix(), b)
 	return err
 }
 
