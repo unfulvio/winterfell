@@ -12,7 +12,7 @@ import (
 
 func main() {
 
-	fmt.Println( "-- Starting Wintefell --" )
+	fmt.Println("-- Starting Wintefell --")
 
 	router := gin.Default()
 	pool   := &redis.Pool{ Dial: func() (redis.Conn, error) {
@@ -26,32 +26,35 @@ func main() {
 	// get orders for a given shop
 	router.POST("v2/shops/:shop_uuid/orders", func(c *gin.Context) {
 
-		shopUUID := c.Param("shop_uuid")
-
 		// return server error if pool errored out
 		if pool == nil {
 			c.JSON(500, gin.H{ "status" : 500 })
+			fmt.Println("An error occurred: could not connect to Redis.")
+			return
 		}
 
-		fmt.Printf( "Requesting orders for shop %s...\n", shopUUID )
+		// grab the shop ID
+		shopUUID := c.Param("shop_uuid")
 
-		// grab the request data to be sent to Redis
+		fmt.Printf("Requesting orders for shop %s...\n", shopUUID)
+
+		// grab other request data to send to Redis
 		authString := c.Request.Header.Get( "authorization" )
 		auth       := strings.SplitN(strings.Replace(authString, "Token ", "", 1), ",", 2)
 		params     := []interface{}{auth, "params_hash_for_worker"}
 
-		fmt.Println( "Sending new task to Redis..." )
+		fmt.Println("Sending new task to Redis...")
 
 		// prepare and enqueue job to Redis
 		job := gokiq.NewJob("ApiOrderEventWorker", "default", params, 1)
 
 		jobID := job.Enqueue(pool)
 
-		fmt.Printf( "Got Job ID %s\n", jobID )
+		fmt.Printf("Got Job ID %s\n", jobID)
 
 		job.EnqueueAt(time.Now(), pool)
 
-		fmt.Println( "Done!" )
+		fmt.Println("Done!")
 
 		// tell the requester that everything's gonna be ok
 		c.JSON(http.StatusOK, gin.H{ "status" : 200 })
