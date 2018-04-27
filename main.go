@@ -55,7 +55,7 @@ func main() {
 		authArray[1]  = ParseTokenAndOptions(authString)           // the auth token
 
 		// build request data arguments
-		var requestData map[string]string
+		requestData := make( map[string]string )
 
 		requestData["requested_at"]    = time.Now().String()
 		requestData["request_method"]  = c.Request.Method
