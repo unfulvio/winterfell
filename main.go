@@ -2,10 +2,11 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
-	"strings"
 	"github.com/garyburd/redigo/redis"
+	"github.com/DuoSRX/gokiq"
 	"net/http"
 	"time"
+	"strings"
 )
 
 func main() {
@@ -26,18 +27,10 @@ func main() {
 		shopUUID      := c.Param("shop_uuid")
 		authString    := c.Request.Header.Get( "authorization" )
 		auth          := strings.SplitN(strings.Replace(authString, "Token ", "", 1), ",", 2)
-		params        := "params_hash_for_worker"
-		someInterface := []{
-			Authorization: auth,
-			Params:        params
-		}
+		params        := []interface{}{auth, "params_hash_for_worker"}
 
 		// prepare and enqueue job to Redis
-		job := NewJob(
-			"ApiOrderEventWorker",
-			"default",
-			someInterface,
-			1)
+		job := gokiq.NewJob("ApiOrderEventWorker", "default", params, 1)
 
 		job.Enqueue(pool)
 		job.EnqueueAt(time.Now(), pool)
