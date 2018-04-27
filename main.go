@@ -8,6 +8,7 @@ import (
 	"strings"
 	"fmt"
 	"regexp"
+	"github.com/aws/aws-lambda-go/lambda"
 )
 
 func ParseTokenAndOptions(auth string) string {
@@ -20,7 +21,7 @@ func ParseTokenAndOptions(auth string) string {
 	return strings.SplitN(strings.Replace( strings.Replace(auth, "Token ", "", 1), "token=", "", 1), " ", 2)[0]
 }
 
-func main() {
+func handler() {
 
 	fmt.Println("-- Starting Wintefell --")
 
@@ -92,4 +93,8 @@ func main() {
 	})
 
 	router.Run(":8080")
+}
+
+func main() {
+	lambda.Start(handler)
 }
