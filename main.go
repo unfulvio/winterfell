@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/garyburd/redigo/redis"
-	"github.com/DuoSRX/gokiq"
 	"net/http"
 	"time"
 	"strings"
@@ -46,7 +45,7 @@ func main() {
 		fmt.Println("Sending new task to Redis...")
 
 		// prepare and enqueue job to Redis
-		job := gokiq.NewJob("ApiOrderEventWorker", "default", params, 1)
+		job := NewJob("ApiOrderEventWorker", "default", params, 1)
 
 		jobID := job.Enqueue(pool)
 
