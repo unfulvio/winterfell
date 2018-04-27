@@ -50,6 +50,7 @@ func main() {
 
 		jobID := job.Enqueue(pool)
 
+		// looks like GoKiq doesn't return a job ID so this might be null after all...
 		fmt.Printf("Got Job ID %s\n", jobID)
 
 		job.EnqueueAt(time.Now(), pool)
