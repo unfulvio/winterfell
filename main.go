@@ -54,11 +54,7 @@ func main() {
 		fmt.Println( "Done!" )
 
 		// tell the requester that everything's gonna be ok
-		c.JSON(http.StatusOK, gin.H{
-			"status"         : 200,
-			"authentication" : auth,
-			"shop_uuid"      : shopUUID,
-		})
+		c.JSON(http.StatusOK, gin.H{ "status" : 200 })
 	})
 
 	router.Run(":8080")
